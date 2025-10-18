@@ -28,7 +28,10 @@ jobs:
         run: |
           call "%VSINSTALL%\VC\Auxiliary\Build\vcvars64.bat"
           cd src
-          nmake /f Makefile.msvc BUILDMODE=static
+          call msvcbuild.bat static
+          dir *.lib
+          dir *.dll
+          dir *.exe
 
       - name: Package artifacts
         shell: bash
