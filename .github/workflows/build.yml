@@ -28,7 +28,10 @@ jobs:
         run: |
           call "%VSINSTALL%\VC\Auxiliary\Build\vcvars64.bat"
           cd src
+
           call msvcbuild.bat static
+          call msvcbuild.bat dynamic
+
           dir *.lib
           dir *.dll
           dir *.exe
@@ -38,8 +41,8 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path artifact | Out-Null
           Copy-Item src\luajit.exe artifact -ErrorAction SilentlyContinue
-          Copy-Item src\*.lib artifact -ErrorAction SilentlyContinue
           Copy-Item src\*.dll artifact -ErrorAction SilentlyContinue
+          Copy-Item src\*.lib artifact -ErrorAction SilentlyContinue
           Compress-Archive -Path artifact\* -DestinationPath LuaJIT-windows-msvc-x64.zip
 
       - name: Upload artifact
@@ -49,27 +52,37 @@ jobs:
           path: LuaJIT-windows-msvc-x64.zip
 
   build-linux:
-    name: Build (Linux)
+    name: Build (Linux64)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install them build tools
+      - name: Install build tools
         run: sudo apt-get update && sudo apt-get install -y build-essential
 
-      - name: Build!!!
+      - name: Build (Static + Shared)
         run: |
           cd src
+
+          make clean
           make CC=gcc BUILDMODE=static
+
+          mkdir -p ../artifact
+          cp luajit ../artifact/
+          cp libluajit.a ../artifact/ || true
+
+          make clean
+          make CC=gcc BUILDMODE=dynamic
+
+          cp luajit ../artifact/luajit-dynamic || true
+          cp libluajit.so ../artifact/ || true
 
       - name: Package artifacts
         run: |
-          mkdir -p artifact
-          cp src/luajit artifact/
-          cp src/*.so artifact/ || true
-          tar -czf LuaJIT-linux-x64.tar.gz artifact/
+          cd artifact
+          tar -czf ../LuaJIT-linux-x64.tar.gz *
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
