@@ -34,13 +34,13 @@ jobs:
           dir *.exe
 
       - name: Package artifacts
-        shell: bash
+        shell: pwsh
         run: |
-          mkdir -p artifact
-          cp src/luajit.exe artifact/ || true
-          cp src/*.dll artifact/ || true
-          cp src/*.lib artifact/ || true
-          zip -r LuaJIT-windows-msvc-x64.zip artifact/
+          New-Item -ItemType Directory -Force -Path artifact | Out-Null
+          Copy-Item src\luajit.exe artifact -ErrorAction SilentlyContinue
+          Copy-Item src\*.lib artifact -ErrorAction SilentlyContinue
+          Copy-Item src\*.dll artifact -ErrorAction SilentlyContinue
+          Compress-Archive -Path artifact\* -DestinationPath LuaJIT-windows-msvc-x64.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
