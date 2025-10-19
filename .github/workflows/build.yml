@@ -23,33 +23,38 @@ jobs:
           for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set VSINSTALL=%%i
           echo VSINSTALL=%VSINSTALL%>> %GITHUB_ENV%
 
-      - name: Build!!!
+      - name: Build
         shell: cmd
         run: |
           call "%VSINSTALL%\VC\Auxiliary\Build\vcvars64.bat"
           cd src
 
+          REM Build static
           call msvcbuild.bat static
-          call msvcbuild.bat dynamic
+          mkdir -p ..\artifact\windows\static
+          move *.lib ..\artifact\windows\static\ 2>nul
+          move luajit.exe ..\artifact\windows\static\ 2>nul
 
-          dir *.lib
-          dir *.dll
-          dir *.exe
+          REM Build dynamic
+          call msvcbuild.bat dynamic
+          mkdir -p ..\artifact\windows\dynamic
+          move *.lib ..\artifact\windows\dynamic\ 2>nul
+          move *.dll ..\artifact\windows\dynamic\ 2>nul
+          move luajit.exe ..\artifact\windows\dynamic\ 2>nul
 
       - name: Package artifacts
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path artifact | Out-Null
-          Copy-Item src\luajit.exe artifact -ErrorAction SilentlyContinue
-          Copy-Item src\*.dll artifact -ErrorAction SilentlyContinue
-          Copy-Item src\*.lib artifact -ErrorAction SilentlyContinue
-          Compress-Archive -Path artifact\* -DestinationPath LuaJIT-windows-msvc-x64.zip
+          Compress-Archive -Path artifact/windows/static/* -DestinationPath LuaJIT-windows-static.zip
+          Compress-Archive -Path artifact/windows/dynamic/* -DestinationPath LuaJIT-windows-dynamic.zip
 
-      - name: Upload artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: LuaJIT-windows-msvc-x64
-          path: LuaJIT-windows-msvc-x64.zip
+          name: LuaJIT-windows
+          path: |
+            LuaJIT-windows-static.zip
+            LuaJIT-windows-dynamic.zip
 
   build-linux:
     name: Build (Linux64)
@@ -68,24 +73,27 @@ jobs:
 
           make clean
           make CC=gcc BUILDMODE=static XCFLAGS="-fPIC"
-
-          mkdir -p ../artifact
-          cp luajit ../artifact/
-          cp libluajit.a ../artifact/ || true
+          mkdir -p ../artifact/linux/static
+          cp luajit ../artifact/linux/static/ 2>/dev/null || true
+          cp libluajit.a ../artifact/linux/static/ 2>/dev/null || true
 
           make clean
           make CC=gcc BUILDMODE=dynamic
-
-          cp luajit ../artifact/luajit-dynamic || true
-          cp libluajit.so ../artifact/ || true
+          mkdir -p ../artifact/linux/dynamic
+          cp luajit ../artifact/linux/dynamic/ 2>/dev/null || true
+          cp libluajit.so ../artifact/linux/dynamic/ 2>/dev/null || true
 
       - name: Package artifacts
         run: |
-          cd artifact
-          tar -czf ../LuaJIT-linux-x64.tar.gz *
+          cd artifact/linux/static
+          tar -czf ../../../LuaJIT-linux-static.tar.gz *
+          cd ../dynamic
+          tar -czf ../../../LuaJIT-linux-dynamic.tar.gz *
 
-      - name: Upload artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: LuaJIT-linux-x64
-          path: LuaJIT-linux-x64.tar.gz
+          name: LuaJIT-linux
+          path: |
+            LuaJIT-linux-static.tar.gz
+            LuaJIT-linux-dynamic.tar.gz
